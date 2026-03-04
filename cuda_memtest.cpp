@@ -575,11 +575,11 @@ main(int argc, char** argv)
 	exit(ERR_BAD_STATE);
     }
 
-    active_update_temperature = 0;
-
     for(i=0;i < num_gpus;i++){
 	pthread_join(pid[i], NULL);
     }
+
+    active_update_temperature = 0;
 
     printf("main thread: Program exits\n");
 
