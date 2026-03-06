@@ -8,13 +8,24 @@ void update_temperature(void)
     unsigned int deviceCount;
     NVML_CHECK(nvmlDeviceGetCount( &deviceCount ));
 
-    for( unsigned int devIdx = 0; devIdx < deviceCount; ++devIdx )
+    unsigned int monitoredCount = (deviceCount > MAX_GPU_NUM) ? MAX_GPU_NUM : deviceCount;
+    if (deviceCount > MAX_GPU_NUM) {
+        fprintf(stderr, "WARNING: Found %u GPUs, but MAX_GPU_NUM is %u. Clamping to maximum supported.\n", deviceCount, MAX_GPU_NUM);
+    }
+
+    for( unsigned int devIdx = 0; devIdx < monitoredCount; ++devIdx )
     {
         nvmlDevice_t devHandle;
         NVML_CHECK(nvmlDeviceGetHandleByIndex( devIdx, &devHandle ));
 
         unsigned int devTemperature;
+#if (NVML_API_VERSION >= 13)
+        nvmlTemperature_t temperature = {nvmlTemperature_v1, NVML_TEMPERATURE_GPU};
+        NVML_CHECK(nvmlDeviceGetTemperatureV( devHandle, &temperature ));
+        devTemperature = temperature.temperature;
+#else
         NVML_CHECK(nvmlDeviceGetTemperature( devHandle, NVML_TEMPERATURE_GPU, &devTemperature ));
+#endif
         gpu_temp[devIdx] = devTemperature;
 
         DEBUG_PRINTF("temperature updated: (gpu %d) %d \n", devIdx, devTemperature);
