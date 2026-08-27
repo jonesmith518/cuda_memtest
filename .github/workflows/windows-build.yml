@@ -1,0 +1,46 @@
+name: Build cuda_memtest for Windows
+
+on:
+  push:
+    branches: [ main, dev, dev-ci ]
+  workflow_dispatch: # Allows you to run it manually
+
+jobs:
+  build-windows:
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup CUDA Toolkit
+        uses: Jimver/cuda-toolkit@v0.2.16
+        with:
+          cuda: '12.4.1' # Targets your Tesla P100 architecture perfectly
+
+      - name: Install Pthreads for Windows
+        run: |
+          # Download a prebuilt windows pthread binary package
+          vcpkg install pthreads:x64-windows
+
+      - name: Configure CMake
+        run: |
+          mkdir build
+          cd build
+          # sm_60 is the microarchitecture for the Pascal Tesla P100
+          cmake -G "Visual Studio 17 2022" -A x64 -T "cuda=$env:CUDA_PATH" `
+          -DCMAKE_TOOLCHAIN_FILE="C:/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+          -DCMAKE_CUDA_FLAGS="-I C:/vcpkg/installed/x64-windows/include" `
+          -DCMAKE_EXE_LINKER_FLAGS="C:/vcpkg/installed/x64-windows/lib/pthreadVC3.lib" `
+          -DCMAKE_CUDA_ARCHITECTURES=60 ..
+
+      - name: Build Project
+        run: |
+          cd build
+          cmake --build . --config Release
+
+      - name: Upload Windows Executable Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cuda_memtest-windows
+          path: build/Release/cuda_memtest.exe
